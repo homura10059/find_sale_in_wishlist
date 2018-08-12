@@ -61,3 +61,5 @@ target/
 \.python-version
 
 \.DS_Store
+
+deploy_package\.zip
