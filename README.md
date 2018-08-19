@@ -33,3 +33,7 @@ Usage
 1. aws lambda へのアップロード
     - `sh ./upload.sh`
 1. CloudWatch Event で lambda を定期実行するようにする 
+
+* 必要な環境変数
+    - `slackPostURL`
+    - `slackChannel`

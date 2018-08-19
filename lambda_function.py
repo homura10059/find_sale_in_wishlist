@@ -8,6 +8,7 @@ import json
 from bs4 import BeautifulSoup
 from time import sleep
 import re
+from memorize.cache import cached
 
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
@@ -87,7 +88,9 @@ def get_full_page_html(driver, url):
     return html
 
 
-def get_href_list(html):
+@cached(timeout=60*60)
+def get_href_list(driver, url):
+    html = get_full_page_html(driver, url)
     soup = BeautifulSoup(html, "html.parser")
 
     href_list = []
@@ -176,6 +179,7 @@ def build_slack_message(kindle_books_list):
     return slack_message
 
 
+@cached(timeout=60*60)
 def get_kindle_book(id, driver, url):
     kindle_book = {'url': url}
     soup = get_soup(driver, url)
@@ -196,14 +200,14 @@ def lambda_handler(event, context):
 
     url = event['url']
     driver = get_web_driver()
-    html = get_full_page_html(driver, url)
-    href_list = get_href_list(html)
+
+    href_list = get_href_list(url=url, driver=driver)
 
     kindle_books_list = {}
     for href in href_list:
         kindle_book_id = href.split('/')[2]
         url = 'https://www.amazon.co.jp' + href
-        kindle_book = get_kindle_book(id, driver, url)
+        kindle_book = get_kindle_book(id=id, driver=driver, url=url)
         kindle_books_list[kindle_book_id] = kindle_book
     driver.close()
 
