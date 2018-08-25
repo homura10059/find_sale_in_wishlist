@@ -15,10 +15,6 @@ formatter = logzero.LogFormatter(
 )
 logzero.formatter(formatter)
 
-# Slack の設定
-SLACK_POST_URL = os.environ['slackPostURL']
-SLACK_CHANNEL = os.environ['slackChannel']
-
 
 def get_web_driver():
     """
@@ -169,11 +165,11 @@ def build_attachments(kindle_books_list, point_threshold=20, discount_threshold=
     return attachments
 
 
-def build_slack_message(kindle_books_list):
+def build_slack_message(channel, kindle_books_list):
     attachments = build_attachments(kindle_books_list)
     # SlackにPOSTする内容をセット
     slack_message = {
-        'channel': SLACK_CHANNEL,
+        'channel': channel,
         "attachments": attachments,
     }
     return slack_message
@@ -197,24 +193,26 @@ def get_kindle_book(id, driver, url):
 
 
 def lambda_handler(event, context):
+    wish_list_url = event['wish_list_url']
+    slack_incoming_web_hook = event['slack_incoming_web_hook']
+    slack_channel = event['slack_channel']
 
-    url = event['url']
     driver = get_web_driver()
 
-    href_list = get_href_list(url=url, driver=driver)
+    href_list = get_href_list(url=wish_list_url, driver=driver)
 
     kindle_books_list = {}
     for href in href_list:
         kindle_book_id = href.split('/')[2]
-        url = 'https://www.amazon.co.jp' + href
-        kindle_book = get_kindle_book(id=id, driver=driver, url=url)
+        wish_list_url = 'https://www.amazon.co.jp' + href
+        kindle_book = get_kindle_book(id=id, driver=driver, url=wish_list_url)
         kindle_books_list[kindle_book_id] = kindle_book
     driver.close()
 
-    slack_message = build_slack_message(kindle_books_list)
+    slack_message = build_slack_message(slack_channel, kindle_books_list)
     # SlackにPOST
     try:
-        req = requests.post(SLACK_POST_URL, data=json.dumps(slack_message))
+        req = requests.post(slack_incoming_web_hook, data=json.dumps(slack_message))
         logger.info("Message posted to %s", slack_message['channel'])
     except requests.exceptions.RequestException as e:
         logger.error("Request failed: %s", e)
@@ -222,6 +220,10 @@ def lambda_handler(event, context):
 
 if __name__ == "__main__":
     lambda_event = {
-        'url': "http://amzn.asia/g3GNM5i"
+        # 'wish_list_url': "http://amzn.asia/g3GNM5i",
+        'wish_list_url': "http://amzn.asia/4JzxGVQ",
+        'slack_incoming_web_hook': os.environ['slackPostURL'],
+        'slack_channel': os.environ['slackChannel'],
     }
+
     lambda_handler(lambda_event, None)
