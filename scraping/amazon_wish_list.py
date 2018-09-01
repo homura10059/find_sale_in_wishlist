@@ -49,7 +49,7 @@ class WishList:
             # 読み込み時間を延長
             pause_time += 1
             # スクロール距離を延長
-            scroll_height *= 2
+            scroll_height *= 4
 
         logger.debug("complete get_full_page_html url:%s", url)
 
@@ -77,7 +77,7 @@ class WishList:
                 kindle_book_url_list.append(kindle_book_url)
         return kindle_book_url_list
 
-    def get_kindle_books(self, url_list):
+    def get_kindle_books(self, url_list: list) -> dict:
         kindle_books_list = {}
         for url in url_list:
             kindle_book_id = url.split('/')[-2]

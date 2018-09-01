@@ -101,3 +101,5 @@ urllib3/
 yaml/
 
 src/
+
+certifi-2018\.8\.24\.dist-info/
