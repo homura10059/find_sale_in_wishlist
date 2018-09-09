@@ -1,40 +1,61 @@
 import time
+import calendar
 import logzero
 from logzero import logger
+import os
+import boto3
+
 
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
 )
 logzero.formatter(formatter)
 
+endpoint_url = os.environ.get("dynamo_endpoint_url")
+
+if endpoint_url is None:
+    dynamo_db = boto3.resource('dynamodb')
+else:
+    dynamo_db = boto3.resource('dynamodb', endpoint_url=endpoint_url)
+
+table = dynamo_db.Table('kindle_book_cache')
+
 
 class Cache:
-    in_memory_cache = {}
 
     def __init__(self, timeout=60*60):
         self.timeout = timeout
 
-    def set(self, key, val):
-        self.in_memory_cache[key] = {
-            "time": time.time(),
-            "value": val,
-        }
+    def set(self, val: dict or list)-> None:
+        val["expire"] = calendar.timegm(time.gmtime()) + self.timeout
+        table.put_item(
+            Item=val
+        )
+        logger.debug("cache set. val:%s", val)
 
-    def get(self, key):
-        cache = self.in_memory_cache.get(key)
+    @staticmethod
+    def get(key_name: str, key: str)-> None or dict or list:
+        cache = table.get_item(
+            Key={
+                key_name: key
+            }
+        ).get("Item")
 
         if cache is None:
             return None
 
-        now = time.time()
-        delta = now - cache["time"]
-        if delta > self.timeout:
-            self.in_memory_cache.pop(key)
+        now = calendar.timegm(time.gmtime())
+        expire = cache["expire"]
+        if now > expire:
+            table.delete_item(
+                Key={
+                    key_name: key
+                }
+            )
             return None
         else:
-            val = cache["value"]
-            logger.debug("cache hit! key:%s, val:%s", key, val)
-            return val
+            logger.debug("cache hit! key:%s, val:%s", key, cache)
+            return cache
 
 
 def cached(timeout=60*60):
@@ -42,15 +63,16 @@ def cached(timeout=60*60):
         cache = Cache(timeout)
 
         def cached_func(*args, **kwargs):
-            if kwargs.get("url") is None:
+            key_name = "url"
+            if kwargs.get(key_name) is None:
                 key = args[0]
             else:
-                key = kwargs.get("url")
+                key = kwargs.get(key_name)
 
-            cached_val = cache.get(key)
+            cached_val = cache.get(key_name, key)
             if cached_val is None:
                 ret = func(*args, **kwargs)
-                cache.set(key, ret)
+                cache.set(ret)
                 return ret
             else:
                 return cached_val

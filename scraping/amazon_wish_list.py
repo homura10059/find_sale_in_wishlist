@@ -3,6 +3,8 @@ from logzero import logger
 from time import sleep
 from bs4 import BeautifulSoup
 import re
+import time
+import calendar
 
 from memorize.cache import cached
 from scraping.headless_chrome import HeadlessChrome
@@ -104,6 +106,7 @@ class WishList:
             'book_title': book_title,
             'discount_rate': discount_rate,
             'loyalty_points': loyalty_points,
+            'updated': calendar.timegm(time.gmtime())
         }
         logger.debug("complete get_kindle_book: %s", kindle_book)
         return kindle_book
