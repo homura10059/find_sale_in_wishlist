@@ -112,10 +112,14 @@ class WishList:
         return kindle_book
 
     @staticmethod
-    def __get_book_title(soup):
+    def __get_book_title(soup)-> str:
         selector = "#ebooksProductTitle"
         book_title = soup.select_one(selector)
-        return book_title.text
+        if book_title is None:
+            # 取れなかったら適当にselectorを返す
+            return selector
+        else:
+            return book_title.text
 
     @staticmethod
     def __get_discount_rate(soup):
