@@ -3,6 +3,8 @@ from logzero import logger
 from time import sleep
 from bs4 import BeautifulSoup
 import re
+import time
+import calendar
 
 from memorize.cache import cached
 from scraping.headless_chrome import HeadlessChrome
@@ -49,7 +51,7 @@ class WishList:
             # 読み込み時間を延長
             pause_time += 1
             # スクロール距離を延長
-            scroll_height *= 2
+            scroll_height *= 4
 
         logger.debug("complete get_full_page_html url:%s", url)
 
@@ -77,7 +79,7 @@ class WishList:
                 kindle_book_url_list.append(kindle_book_url)
         return kindle_book_url_list
 
-    def get_kindle_books(self, url_list):
+    def get_kindle_books(self, url_list: list) -> dict:
         kindle_books_list = {}
         for url in url_list:
             kindle_book_id = url.split('/')[-2]
@@ -104,15 +106,20 @@ class WishList:
             'book_title': book_title,
             'discount_rate': discount_rate,
             'loyalty_points': loyalty_points,
+            'updated': calendar.timegm(time.gmtime())
         }
         logger.debug("complete get_kindle_book: %s", kindle_book)
         return kindle_book
 
     @staticmethod
-    def __get_book_title(soup):
+    def __get_book_title(soup)-> str:
         selector = "#ebooksProductTitle"
         book_title = soup.select_one(selector)
-        return book_title.text
+        if book_title is None:
+            # 取れなかったら適当にselectorを返す
+            return selector
+        else:
+            return book_title.text
 
     @staticmethod
     def __get_discount_rate(soup):
