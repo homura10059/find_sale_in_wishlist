@@ -69,7 +69,7 @@ class WishList:
         list_end = soup.select_one(selector)
         return list_end is None
 
-    def get_kindle_book_url_list(self):
+    def get_kindle_book_url_list(self) -> list:
         kindle_book_url_list = []
         for link in self.soup.findAll("a"):
             if link.get("href") is not None \

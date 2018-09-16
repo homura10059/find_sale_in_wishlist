@@ -97,7 +97,7 @@ def lambda_handler(event, context):
 
 def handler_worker_scraping(event, context):
     headless_chrome = HeadlessChrome()
-    kindle_book = KindleBook(headless_chrome)
+    kindle_book = KindleBook(headless_chrome=headless_chrome)
     kindle_books = []
     for record in event['Records']:
         kindle_book_url = record['body']
