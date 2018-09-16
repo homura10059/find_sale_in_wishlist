@@ -3,7 +3,7 @@ import os
 from logzero import logger
 import logzero
 import json
-from scraping.amazon_wish_list import WishList
+from scraping.amazon_wish_list import WishList, KindleBook
 from scraping.headless_chrome import HeadlessChrome
 
 formatter = logzero.LogFormatter(
@@ -93,6 +93,20 @@ def lambda_handler(event, context):
     slack_message.add_high_discount_rate_books(kindle_books_dict, discount_threshold)
     slack_message.add_high_loyalty_points_books(kindle_books_dict, point_threshold)
     slack_message.post()
+
+
+def handler_worker_scraping(event, context):
+    headless_chrome = HeadlessChrome()
+    kindle_book = KindleBook(headless_chrome)
+    kindle_books = []
+    for record in event['Records']:
+        body = json.loads(record['body'])
+        url = body['url']
+        book_dict = kindle_book.get(url=url)
+        logger.info("scraping: %s", url)
+        kindle_books.append(book_dict)
+    headless_chrome.driver.close()
+    return kindle_books
 
 
 if __name__ == "__main__":
