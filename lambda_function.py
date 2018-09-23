@@ -100,8 +100,9 @@ def handler_worker_scraping(event, context):
     kindle_book = KindleBook(headless_chrome=headless_chrome)
     kindle_books = []
     for record in event['Records']:
-        kindle_book_url = record['body']
-        logger.info("JSON body: %s", kindle_book_url)
+        body = json.loads(record['body'])
+        logger.info("JSON body: %s", body)
+        kindle_book_url = body['url']
         book_dict = kindle_book.get(url=kindle_book_url)
         kindle_books.append(book_dict)
     headless_chrome.driver.close()
