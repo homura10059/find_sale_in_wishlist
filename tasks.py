@@ -75,3 +75,26 @@ def __deploy_code(c, name: str)-> None:
           + '--function-name {} '.format(name)
           + '--s3-bucket={} '.format(s3_bucket)
           + '--s3-key={s3_dir}/{zip}'.format(s3_dir=s3_dir, zip=deploy_zip))
+
+
+@task
+def create_lambda_function(c, lambda_name):
+    c.run('aws lambda create-function '
+          + '--region {} '.format(region)
+          + '--function-name {} '.format(lambda_name)
+          + '--runtime python3.6 '
+          + '--role arn:aws:iam::267428311438:role/lambda-queue '
+          + '--code S3Bucket={s3_bucket},{s3_dir}/{zip} '.format(s3_bucket=s3_bucket, s3_dir=s3_dir, zip=deploy_zip)
+          + '--handler lambda_function.{} '.format(lambda_name)
+          + '--memory-size 256 --timeout 300 '
+          + '--dead-letter-config TargetArn=arn:aws:sns:ap-northeast-1:267428311438:failed-lambda '
+          + '--tags service=kindle_sale '
+          )
+
+@task
+def create_sqs_queue(c, queue_name):
+    c.run('aws sqs create-queue '
+          + '--region {} '.format(region)
+          + '--queue-name {} '.format(queue_name)
+          + '--attributes VisibilityTimeout=300 '
+          )
