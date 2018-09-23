@@ -97,7 +97,7 @@ class KindleBook:
         else:
             self.headless_chrome = headless_chrome
 
-    @cached(timeout=60 * 60)
+    @cached(timeout=3*60*60)
     def get(self, url):
 
         kindle_book = {'url': url}
