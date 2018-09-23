@@ -70,7 +70,7 @@ class SlackMessage:
             logger.error("Request failed: %s", e)
 
 
-def get_kindle_books(wish_list_url: str) -> dict:
+def __get_kindle_books(wish_list_url: str) -> dict:
     headless_chrome = HeadlessChrome()
     wish_list = WishList(url=wish_list_url, headless_chrome=headless_chrome)
     book_url_list = wish_list.get_kindle_book_url_list()
@@ -86,7 +86,7 @@ def lambda_handler(event, context):
     point_threshold = event.get('point_threshold', 20)
     discount_threshold = event.get('discount_threshold', 20)
 
-    kindle_books_dict = get_kindle_books(wish_list_url=wish_list_url)
+    kindle_books_dict = __get_kindle_books(wish_list_url=wish_list_url)
 
     slack_message = SlackMessage(slack_incoming_web_hook=slack_incoming_web_hook,
                                  slack_channel=slack_channel)
