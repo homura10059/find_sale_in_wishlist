@@ -3,8 +3,9 @@ import os
 from logzero import logger
 import logzero
 import json
-from scraping.amazon_wish_list import WishList
+from scraping.amazon_wish_list import WishList, KindleBook
 from scraping.headless_chrome import HeadlessChrome
+import boto3
 
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
@@ -70,7 +71,7 @@ class SlackMessage:
             logger.error("Request failed: %s", e)
 
 
-def get_kindle_books(wish_list_url: str) -> dict:
+def __get_kindle_books(wish_list_url: str) -> dict:
     headless_chrome = HeadlessChrome()
     wish_list = WishList(url=wish_list_url, headless_chrome=headless_chrome)
     book_url_list = wish_list.get_kindle_book_url_list()
@@ -86,13 +87,67 @@ def lambda_handler(event, context):
     point_threshold = event.get('point_threshold', 20)
     discount_threshold = event.get('discount_threshold', 20)
 
-    kindle_books_dict = get_kindle_books(wish_list_url=wish_list_url)
+    kindle_books_dict = __get_kindle_books(wish_list_url=wish_list_url)
 
     slack_message = SlackMessage(slack_incoming_web_hook=slack_incoming_web_hook,
                                  slack_channel=slack_channel)
     slack_message.add_high_discount_rate_books(kindle_books_dict, discount_threshold)
     slack_message.add_high_loyalty_points_books(kindle_books_dict, point_threshold)
     slack_message.post()
+
+
+def worker_scraping_wish_list(event, context):
+
+    # sqs への通信でエラーになった時余計な処理をしないために最初に取得する
+    sqs = boto3.client('sqs')
+    queue = sqs.get_queue_url(QueueName='worker_scraping_book')
+    logger.debug("sqs queue: %s", queue)
+
+    url_in_wish_list = []
+
+    headless_chrome = HeadlessChrome()
+    for record in event['Records']:
+        body = json.loads(record['body'])
+        logger.info("JSON body: %s", body)
+        wish_list_url = body['url']
+        logger.info("wish_list_url: %s", wish_list_url)
+        wish_list = WishList(url=wish_list_url, headless_chrome=headless_chrome)
+        book_url_list = wish_list.get_kindle_book_url_list()
+        url_in_wish_list.extend(book_url_list)
+    headless_chrome.driver.close()
+
+    unique_url_list = list(set(url_in_wish_list))
+
+
+    for url in unique_url_list:
+        # SQSへJSONの送信
+        body = {"url": url}
+        response = sqs.send_message(
+            QueueUrl=queue['QueueUrl'],
+            DelaySeconds=0,
+            MessageBody=(
+                json.dumps(body)
+            )
+        )
+        logger.info("sqs response: %s", response)
+
+    logger.info("url_in_wish_list: %s", unique_url_list)
+    return url_in_wish_list
+
+
+def worker_scraping_book(event, context):
+    headless_chrome = HeadlessChrome()
+    kindle_book = KindleBook(headless_chrome=headless_chrome)
+    kindle_books = []
+    for record in event['Records']:
+        body = json.loads(record['body'])
+        logger.info("JSON body: %s", body)
+        kindle_book_url = body['url']
+        book_dict = kindle_book.get(url=kindle_book_url)
+        kindle_books.append(book_dict)
+    headless_chrome.driver.close()
+    logger.info("kindle_books: %s", kindle_books)
+    return kindle_books
 
 
 if __name__ == "__main__":

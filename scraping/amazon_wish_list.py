@@ -25,6 +25,7 @@ class WishList:
         html = self.__get_full_page_html(url)
         soup = BeautifulSoup(html, "html.parser")
         self.soup = soup
+        self.kindle_book = KindleBook(headless_chrome)
 
     def __get_full_page_html(self, url):
         driver = self.headless_chrome.driver
@@ -68,7 +69,7 @@ class WishList:
         list_end = soup.select_one(selector)
         return list_end is None
 
-    def get_kindle_book_url_list(self):
+    def get_kindle_book_url_list(self) -> list:
         kindle_book_url_list = []
         for link in self.soup.findAll("a"):
             if link.get("href") is not None \
@@ -83,22 +84,31 @@ class WishList:
         kindle_books_list = {}
         for url in url_list:
             kindle_book_id = url.split('/')[-2]
-            kindle_book = self.get_kindle_book(url=url)
+            kindle_book = self.kindle_book.get(url=url)
             kindle_books_list[kindle_book_id] = kindle_book
         return kindle_books_list
 
-    @cached(timeout=60 * 60)
-    def get_kindle_book(self, url):
+
+class KindleBook:
+
+    def __init__(self, headless_chrome=None):
+        if headless_chrome is None:
+            self.headless_chrome = HeadlessChrome()
+        else:
+            self.headless_chrome = headless_chrome
+
+    @cached(timeout=3*60*60)
+    def get(self, url):
 
         kindle_book = {'url': url}
         soup = self.headless_chrome.get_soup(url)
 
-        book_title = self.__get_book_title(soup)
+        book_title = self.__find_book_title_in(soup)
 
-        discount_rate = self.__get_discount_rate(soup)
+        discount_rate = self.__find_discount_rate_in(soup)
         kindle_book['discount_rate'] = discount_rate
 
-        loyalty_points = self.__get_loyalty_points(soup)
+        loyalty_points = self.__find_loyalty_points_in(soup)
         kindle_book['loyalty_points'] = loyalty_points
 
         kindle_book = {
@@ -112,7 +122,7 @@ class WishList:
         return kindle_book
 
     @staticmethod
-    def __get_book_title(soup)-> str:
+    def __find_book_title_in(soup)-> str:
         selector = "#ebooksProductTitle"
         book_title = soup.select_one(selector)
         if book_title is None:
@@ -122,7 +132,7 @@ class WishList:
             return book_title.text
 
     @staticmethod
-    def __get_discount_rate(soup):
+    def __find_discount_rate_in(soup):
         selector = "#buybox > div > table > tbody > tr.kindle-price > td.a-color-price.a-size-medium.a-align-bottom > p"
         kindle_price = soup.select_one(selector)
         discount_rate = 0
@@ -133,7 +143,7 @@ class WishList:
         return discount_rate
 
     @staticmethod
-    def __get_loyalty_points(soup):
+    def __find_loyalty_points_in(soup):
         selector = "#buybox > div > table > tbody > tr.loyalty-points > td.a-align-bottom"
         point = soup.select_one(selector)
         loyalty_points = 0
