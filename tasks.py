@@ -43,6 +43,7 @@ def upload(c):
 
     file_list = [
         'requirements.txt',
+        'constraints.txt',
         'lambda_function.py',
     ]
     for file in file_list:
