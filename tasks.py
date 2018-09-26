@@ -1,5 +1,6 @@
 from invoke import task
-
+import shutil
+from pathlib import Path
 
 region = 'ap-northeast-1'
 s3_bucket = 'lambda-function-deploy-packages'
@@ -9,15 +10,22 @@ deploy_zip = 'deploy_package.zip'
 
 @task
 def clean(c, docs=False, bytecode=False, extra=''):
-    patterns = ['build', 'deploy']
+    patterns = ['build', 'dist', '*.egg-info']
     if docs:
         patterns.append('docs/_build')
     if bytecode:
         patterns.append('**/*.pyc')
     if extra:
         patterns.append(extra)
+
     for pattern in patterns:
-        c.run("rm -rf {}".format(pattern))
+        # Pathオブジェクトを生成
+        current_dir = Path("./")
+        path_list = list(current_dir.glob(pattern))
+
+        for path in path_list:
+            print("remove : " + str(path))
+            shutil.rmtree(str(path))
 
 
 @task
@@ -91,6 +99,7 @@ def create_lambda_function(c, lambda_name):
           + '--tags service=kindle_sale '
           )
 
+
 @task
 def create_sqs_queue(c, queue_name):
     c.run('aws sqs create-queue '
@@ -98,3 +107,4 @@ def create_sqs_queue(c, queue_name):
           + '--queue-name {} '.format(queue_name)
           + '--attributes VisibilityTimeout=300 '
           )
+
