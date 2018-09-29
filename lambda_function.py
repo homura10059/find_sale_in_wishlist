@@ -1,5 +1,7 @@
 import requests
 import os
+
+from boto3.dynamodb.conditions import Key
 from logzero import logger
 import logzero
 import json
@@ -100,7 +102,7 @@ def worker_scraping_wish_list(event, context):
 
     # sqs への通信でエラーになった時余計な処理をしないために最初に取得する
     sqs = boto3.client('sqs')
-    queue = sqs.get_queue_url(QueueName='worker_scraping_book')
+    queue = sqs.get_queue_url(QueueName="worker_scraping_book")
     logger.debug("sqs queue: %s", queue)
 
     url_in_wish_list = []
@@ -118,7 +120,6 @@ def worker_scraping_wish_list(event, context):
 
     unique_url_list = list(set(url_in_wish_list))
 
-
     for url in unique_url_list:
         # SQSへJSONの送信
         body = {"url": url}
@@ -132,7 +133,7 @@ def worker_scraping_wish_list(event, context):
         logger.info("sqs response: %s", response)
 
     logger.info("url_in_wish_list: %s", unique_url_list)
-    return url_in_wish_list
+    return unique_url_list
 
 
 def worker_scraping_book(event, context):
@@ -148,6 +149,61 @@ def worker_scraping_book(event, context):
     headless_chrome.driver.close()
     logger.info("kindle_books: %s", kindle_books)
     return kindle_books
+
+
+def worker_user(event, context):
+
+    # 依存リソース への通信でエラーになった時余計な処理をしないために最初に取得する
+    table = __get_dynamo_db_table('kindle_sale_wish_list')
+    sqs = boto3.client('sqs')
+    queue = sqs.get_queue_url(QueueName="worker_scraping_wish_list")
+    logger.debug("sqs queue: %s", queue)
+
+    wish_list_url_list = []
+    for record in event['Records']:
+        body = json.loads(record['body'])
+        logger.info("JSON body: %s", body)
+        user_id = int(body['user_id'])
+        logger.info("user_id: %s", user_id)
+
+        result = table.query(
+            IndexName='user_id-index',
+            KeyConditionExpression=Key('user_id').eq(user_id)
+        )
+
+        for item in result.get("Items"):
+            wish_list_url_list.append(item.get('url'))
+
+    unique_url_list = list(set(wish_list_url_list))
+
+    for url in unique_url_list:
+        # SQSへJSONの送信
+        body = {"url": url}
+        response = sqs.send_message(
+            QueueUrl=queue['QueueUrl'],
+            DelaySeconds=0,
+            MessageBody=(
+                json.dumps(body)
+            )
+        )
+        logger.info("sqs response: %s", response)
+
+    logger.info("wish_list_url_list: %s", unique_url_list)
+    return unique_url_list
+
+
+def __get_dynamo_db_table(name):
+    endpoint_url = os.environ.get("dynamo_endpoint_url")
+
+    if endpoint_url is None:
+        dynamo_db = boto3.resource('dynamodb')
+    else:
+        dynamo_db = boto3.resource('dynamodb', endpoint_url=endpoint_url)
+
+    table = dynamo_db.Table(name)
+    logger.debug("table: %s", table)
+
+    return table
 
 
 if __name__ == "__main__":
