@@ -55,11 +55,12 @@ def upload(c):
 
 
 @task
-def deploy(c, lambda_name='all'):
+def deploy(c, lambda_name):
     lambda_names = [
         'lambda_headless_chrome_python',
         'worker_scraping_book',
         'worker_scraping_wish_list',
+        'worker_user',
     ]
 
     if lambda_name == 'all':
@@ -84,7 +85,7 @@ def create_lambda_function(c, lambda_name):
           + '--function-name {} '.format(lambda_name)
           + '--runtime python3.6 '
           + '--role arn:aws:iam::267428311438:role/lambda-queue '
-          + '--code S3Bucket={s3_bucket},{s3_dir}/{zip} '.format(s3_bucket=s3_bucket, s3_dir=s3_dir, zip=deploy_zip)
+          + '--code S3Bucket={s3_bucket},S3Key={s3_dir}/{zip} '.format(s3_bucket=s3_bucket, s3_dir=s3_dir, zip=deploy_zip)
           + '--handler lambda_function.{} '.format(lambda_name)
           + '--memory-size 256 --timeout 300 '
           + '--dead-letter-config TargetArn=arn:aws:sns:ap-northeast-1:267428311438:failed-lambda '
