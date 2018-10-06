@@ -1,11 +1,18 @@
 import requests
 import os
+
+from boto3.dynamodb.conditions import Key
 from logzero import logger
 import logzero
 import json
 from scraping.amazon_wish_list import WishList, KindleBook
 from scraping.headless_chrome import HeadlessChrome
 import boto3
+from string import Template
+import textwrap
+import locale
+
+locale.setlocale(locale.LC_ALL, '')
 
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
@@ -19,31 +26,33 @@ class SlackMessage:
     def __init__(self, slack_incoming_web_hook, slack_channel):
         self.slack_incoming_web_hook = slack_incoming_web_hook
         self.slack_channel = slack_channel
-        self.attachments = []
+        self.books = {}
 
     def add_high_loyalty_points_books(self, kindle_books_list, point_threshold=20):
-
-        attachments = []
-
-        over_points_list = list(filter(lambda x: x[1]['loyalty_points'] >= point_threshold, kindle_books_list.items()))
-        for kindle_id, kindle_book in over_points_list:
-            text = "{} % ポイント還元".format(kindle_book['loyalty_points'])
-            attachment = {
-                "text": text,
-                "color": self.color,
-                "title": kindle_book['book_title'],
-                "title_link": kindle_book['url'],
-            }
-            attachments.append(attachment)
-
-        self.attachments.extend(attachments)
+        over_points_dict = dict(filter(lambda x: x[1]['loyalty_points'] >= point_threshold, kindle_books_list.items()))
+        self.books = {**self.books, **over_points_dict}
 
     def add_high_discount_rate_books(self, kindle_books_list, discount_threshold=20):
+        discount_dict = dict(filter(lambda x: x[1]['discount_rate'] >= discount_threshold, kindle_books_list.items()))
+        self.books = {**self.books, **discount_dict}
+
+    def build_data(self):
 
         attachments = []
-        discount_list = list(filter(lambda x: x[1]['discount_rate'] >= discount_threshold, kindle_books_list.items()))
-        for kindle_id, kindle_book in discount_list:
-            text = "{} % 割引".format(kindle_book['discount_rate'])
+
+        locale.setlocale(locale.LC_ALL, ('ja_JP', 'UTF-8'))
+
+        for kindle_id, kindle_book in self.books.items():
+            kindle_book['price'] = locale.currency(kindle_book['price'], grouping=True)
+
+            text_template = """
+            金額: ${price}
+            値引き率: ${discount_rate}%
+            ポイント還元率: ${loyalty_points}%
+            """
+            temp = Template(textwrap.dedent(text_template))
+            text = temp.safe_substitute(kindle_book)
+
             attachment = {
                 "text": text,
                 "color": self.color,
@@ -52,13 +61,10 @@ class SlackMessage:
             }
             attachments.append(attachment)
 
-        self.attachments.extend(attachments)
-
-    def build_data(self):
         # SlackにPOSTする内容をセット
         slack_message = {
             'channel': self.slack_channel,
-            "attachments": self.attachments,
+            "attachments": attachments,
         }
         return json.dumps(slack_message)
 
@@ -100,7 +106,7 @@ def worker_scraping_wish_list(event, context):
 
     # sqs への通信でエラーになった時余計な処理をしないために最初に取得する
     sqs = boto3.client('sqs')
-    queue = sqs.get_queue_url(QueueName='worker_scraping_book')
+    queue = sqs.get_queue_url(QueueName="worker_scraping_book")
     logger.debug("sqs queue: %s", queue)
 
     url_in_wish_list = []
@@ -118,7 +124,6 @@ def worker_scraping_wish_list(event, context):
 
     unique_url_list = list(set(url_in_wish_list))
 
-
     for url in unique_url_list:
         # SQSへJSONの送信
         body = {"url": url}
@@ -132,7 +137,7 @@ def worker_scraping_wish_list(event, context):
         logger.info("sqs response: %s", response)
 
     logger.info("url_in_wish_list: %s", unique_url_list)
-    return url_in_wish_list
+    return unique_url_list
 
 
 def worker_scraping_book(event, context):
@@ -148,6 +153,61 @@ def worker_scraping_book(event, context):
     headless_chrome.driver.close()
     logger.info("kindle_books: %s", kindle_books)
     return kindle_books
+
+
+def worker_user(event, context):
+
+    # 依存リソース への通信でエラーになった時余計な処理をしないために最初に取得する
+    table = __get_dynamo_db_table('kindle_sale_wish_list')
+    sqs = boto3.client('sqs')
+    queue = sqs.get_queue_url(QueueName="worker_scraping_wish_list")
+    logger.debug("sqs queue: %s", queue)
+
+    wish_list_url_list = []
+    for record in event['Records']:
+        body = json.loads(record['body'])
+        logger.info("JSON body: %s", body)
+        user_id = int(body['user_id'])
+        logger.info("user_id: %s", user_id)
+
+        result = table.query(
+            IndexName='user_id-index',
+            KeyConditionExpression=Key('user_id').eq(user_id)
+        )
+
+        for item in result.get("Items"):
+            wish_list_url_list.append(item.get('url'))
+
+    unique_url_list = list(set(wish_list_url_list))
+
+    for url in unique_url_list:
+        # SQSへJSONの送信
+        body = {"url": url}
+        response = sqs.send_message(
+            QueueUrl=queue['QueueUrl'],
+            DelaySeconds=0,
+            MessageBody=(
+                json.dumps(body)
+            )
+        )
+        logger.info("sqs response: %s", response)
+
+    logger.info("wish_list_url_list: %s", unique_url_list)
+    return unique_url_list
+
+
+def __get_dynamo_db_table(name):
+    endpoint_url = os.environ.get("dynamo_endpoint_url")
+
+    if endpoint_url is None:
+        dynamo_db = boto3.resource('dynamodb')
+    else:
+        dynamo_db = boto3.resource('dynamodb', endpoint_url=endpoint_url)
+
+    table = dynamo_db.Table(name)
+    logger.debug("table: %s", table)
+
+    return table
 
 
 if __name__ == "__main__":
