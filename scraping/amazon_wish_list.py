@@ -88,6 +88,9 @@ class WishList:
             kindle_books_list[kindle_book_id] = kindle_book
         return kindle_books_list
 
+    def driver_close(self):
+        self.headless_chrome.driver.close()
+
 
 class KindleBook:
 
@@ -100,21 +103,20 @@ class KindleBook:
     @cached(timeout=3*60*60)
     def get(self, url):
 
-        kindle_book = {'url': url}
         soup = self.headless_chrome.get_soup(url)
 
         book_title = self.__find_book_title_in(soup)
-
         discount_rate = self.__find_discount_rate_in(soup)
-        kindle_book['discount_rate'] = discount_rate
-
+        discount_price = self.__find_discount_price_in(soup)
+        price = self.__find_price_in(soup)
         loyalty_points = self.__find_loyalty_points_in(soup)
-        kindle_book['loyalty_points'] = loyalty_points
 
         kindle_book = {
             'url': url,
             'book_title': book_title,
             'discount_rate': discount_rate,
+            'discount_price': discount_price,
+            'price': price,
             'loyalty_points': loyalty_points,
             'updated': calendar.timegm(time.gmtime())
         }
@@ -143,6 +145,30 @@ class KindleBook:
         return discount_rate
 
     @staticmethod
+    def __find_discount_price_in(soup):
+        selector = "#buybox > div > table > tbody > tr.kindle-price > td.a-color-price.a-size-medium.a-align-bottom > p"
+        kindle_price = soup.select_one(selector)
+        discount_price = 0
+        regex = r"￥ [0-9]{1,3}(,[0-9]{1,3})*"
+        if kindle_price is not None:
+            matches = re.search(regex, kindle_price.text)
+            group = matches.group()
+            discount_price = int(group.split("￥ ")[1].replace(",", ""))
+        return discount_price
+
+    @staticmethod
+    def __find_price_in(soup):
+        selector = "#buybox > div > table > tbody > tr.kindle-price > td.a-color-price.a-size-medium.a-align-bottom"
+        kindle_price = soup.select_one(selector)
+        price = 0
+        regex = r"￥ [0-9]{1,3}(,[0-9]{1,3})*"
+        if kindle_price is not None:
+            matches = re.search(regex, kindle_price.text)
+            group = matches.group()
+            price = int(group.split("￥ ")[1].replace(",", ""))
+        return price
+
+    @staticmethod
     def __find_loyalty_points_in(soup):
         selector = "#buybox > div > table > tbody > tr.loyalty-points > td.a-align-bottom"
         point = soup.select_one(selector)
@@ -153,3 +179,6 @@ class KindleBook:
             matches = re.search(regex, point.text)
             loyalty_points = int(matches.group().split('%')[0])
         return loyalty_points
+
+    def driver_close(self):
+        self.headless_chrome.driver.close()
