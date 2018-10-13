@@ -4,13 +4,15 @@ import os
 from boto3.dynamodb.conditions import Key
 from logzero import logger
 import logzero
-import json
 from scraping.amazon_wish_list import WishList, KindleBook
 from scraping.headless_chrome import HeadlessChrome
 import boto3
 from string import Template
 import textwrap
 import locale
+import urllib.parse
+import json
+from decimal import Decimal
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -208,6 +210,29 @@ def __get_dynamo_db_table(name):
     logger.debug("table: %s", table)
 
     return table
+
+
+def kindle_books_get(event, context):
+    query_param = event['queryStringParameters']
+    logger.info("query_param: %s", query_param)
+    wish_list_url = urllib.parse.unquote(query_param['wishListUrl'])
+    point_threshold = query_param.get('point_threshold', 20)
+    discount_threshold = query_param.get('discount_threshold', 20)
+
+    kindle_books_dict = __get_kindle_books(wish_list_url=wish_list_url)
+    result = {
+        "isBase64Encoded": False,
+        "statusCode": 200,
+        "headers": {},
+        "body": json.dumps(kindle_books_dict, default=decimal_default)
+    }
+    return result
+
+
+def decimal_default(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError
 
 
 if __name__ == "__main__":
