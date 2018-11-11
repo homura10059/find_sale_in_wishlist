@@ -3,6 +3,8 @@ Transform: AWS::Serverless-2016-10-31
 Description: kindle_sale api
 
 Globals:
+  Api:
+    Cors: "'*'"
   Function:
     Runtime: python3.6
     Timeout: 300
@@ -15,6 +17,7 @@ Globals:
       TargetArn: arn:aws:sns:ap-northeast-1:267428311438:failed-lambda
 
 Resources:
+  # API-GATEWAY 用の設定
   GetKindleBooks:
     Type: AWS::Serverless::Function
     Properties:
