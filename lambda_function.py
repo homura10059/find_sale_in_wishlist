@@ -89,6 +89,12 @@ def __get_kindle_books(wish_list_url: str) -> dict:
 
 
 def lambda_handler(event, context):
+    """
+    cloud-watch event 用のエントリーポイント
+    :param event:
+    :param context:
+    :return:
+    """
     wish_list_url = event['wish_list_url']
     slack_incoming_web_hook = event['slack_incoming_web_hook']
     slack_channel = event['slack_channel']
@@ -213,6 +219,12 @@ def __get_dynamo_db_table(name):
 
 
 def kindle_books_get(event, context):
+    """
+    api-gateway GET kindle_books/ 用のエントリーポイント
+    :param event:
+    :param context:
+    :return:
+    """
     query_param = event['queryStringParameters']
     logger.info("query_param: %s", query_param)
     wish_list_url = urllib.parse.unquote(query_param['wishListUrl'])
@@ -230,6 +242,11 @@ def kindle_books_get(event, context):
 
 
 def decimal_default(obj):
+    """
+    Decimal を float に返還するための function
+    :param obj:
+    :return:
+    """
     if isinstance(obj, Decimal):
         return float(obj)
     raise TypeError

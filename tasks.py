@@ -11,6 +11,14 @@ DIST_PATH = "dist/packages"
 
 @task
 def clean(c, docs=False, bytecode=False, extra=''):
+    """
+    キャッシュなどを clean する
+    :param c:
+    :param docs:
+    :param bytecode:
+    :param extra:
+    :return:
+    """
     patterns = ['build', 'dist', '*.egg-info']
     if docs:
         patterns.append('docs/_build')
@@ -37,7 +45,14 @@ def build(c, docs=False):
 
 
 @task
-def build_for_aws(c, no_clean=False):
+def build_for_lambda(c, no_clean=False):
+    """
+    aws lambda 用に executable なコードをビルドする
+    :param c:
+    :param no_clean:
+    :return:
+    """
+
     if not no_clean:
         clean(c)
 
@@ -65,8 +80,16 @@ def build_for_aws(c, no_clean=False):
 
 @task
 def upload(c, no_build=False, no_clean=False):
+    """
+    s3 へコードをアップロードする
+    :param c:
+    :param no_build:
+    :param no_clean:
+    :return:
+    """
+
     if not no_build:
-        build_for_aws(c, no_clean)
+        build_for_lambda(c, no_clean)
 
     with c.cd(DIST_PATH):
         c.run('aws s3 cp {zip} s3://{s3_bucket}/{s3_dir}/'.format(
@@ -75,8 +98,16 @@ def upload(c, no_build=False, no_clean=False):
 
 @task
 def deploy_stack(c, no_build=False, no_clean=False):
+    """
+    aws cloud formation を使ってコードをデプロイする
+    :param c:
+    :param no_build:
+    :param no_clean:
+    :return:
+    """
+
     if not no_build:
-        build_for_aws(c, no_clean=no_clean)
+        build_for_lambda(c, no_clean=no_clean)
 
     with c.cd(DIST_PATH):
         c.run('rm -rf deploy_package.zip')

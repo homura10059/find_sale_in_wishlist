@@ -108,3 +108,5 @@ venv.bak/
 
 src/
 templates/packaged\.yaml
+
+templates/kindle-sale-api-Prod-swagger-apigateway\.yaml
