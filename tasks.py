@@ -69,7 +69,6 @@ def build_for_lambda(c, no_clean=False):
     directory_list = [
         'bin',
         'find_sale_in_wish_list',
-        'scraping',
     ]
     for directory in directory_list:
         c.run("cp -pR {directory} {path}".format(directory=directory, path=DIST_PATH))

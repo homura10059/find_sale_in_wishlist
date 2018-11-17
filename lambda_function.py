@@ -1,4 +1,3 @@
-import requests
 import os
 
 from boto3.dynamodb.conditions import Key
@@ -7,12 +6,12 @@ import logzero
 from find_sale_in_wish_list.amazon_wish_list import WishList, KindleBook
 from find_sale_in_wish_list.headless_chrome import HeadlessChrome
 import boto3
-from string import Template
-import textwrap
 import locale
 import urllib.parse
 import json
 from decimal import Decimal
+
+from find_sale_in_wish_list.notification import SlackMessage
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -20,63 +19,6 @@ formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
 )
 logzero.formatter(formatter)
-
-
-class SlackMessage:
-    color = "good"
-
-    def __init__(self, slack_incoming_web_hook, slack_channel):
-        self.slack_incoming_web_hook = slack_incoming_web_hook
-        self.slack_channel = slack_channel
-        self.books = {}
-
-    def add_high_loyalty_points_books(self, kindle_books_list, point_threshold=20):
-        over_points_dict = dict(filter(lambda x: x[1]['loyalty_points'] >= point_threshold, kindle_books_list.items()))
-        self.books = {**self.books, **over_points_dict}
-
-    def add_high_discount_rate_books(self, kindle_books_list, discount_threshold=20):
-        discount_dict = dict(filter(lambda x: x[1]['discount_rate'] >= discount_threshold, kindle_books_list.items()))
-        self.books = {**self.books, **discount_dict}
-
-    def build_data(self):
-
-        attachments = []
-
-        locale.setlocale(locale.LC_ALL, ('ja_JP', 'UTF-8'))
-
-        for kindle_id, kindle_book in self.books.items():
-            kindle_book['price'] = locale.currency(kindle_book['price'], grouping=True)
-
-            text_template = """
-            金額: ${price}
-            値引き率: ${discount_rate}%
-            ポイント還元率: ${loyalty_points}%
-            """
-            temp = Template(textwrap.dedent(text_template))
-            text = temp.safe_substitute(kindle_book)
-
-            attachment = {
-                "text": text,
-                "color": self.color,
-                "title": kindle_book['book_title'],
-                "title_link": kindle_book['url'],
-            }
-            attachments.append(attachment)
-
-        # SlackにPOSTする内容をセット
-        slack_message = {
-            'channel': self.slack_channel,
-            "attachments": attachments,
-        }
-        return json.dumps(slack_message)
-
-    def post(self):
-        # SlackにPOST
-        try:
-            req = requests.post(self.slack_incoming_web_hook, data=self.build_data())
-            logger.info("Message posted to %s", self.slack_channel)
-        except requests.exceptions.RequestException as e:
-            logger.error("Request failed: %s", e)
 
 
 def __get_kindle_books(wish_list_url: str) -> dict:
