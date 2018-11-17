@@ -1,7 +1,7 @@
 import pytest
 
-from scraping.amazon_wish_list import KindleBook
-from scraping.headless_chrome import HeadlessChrome
+from find_sale_in_wish_list.amazon_wish_list import KindleBook
+from find_sale_in_wish_list.headless_chrome import HeadlessChrome
 
 
 @pytest.fixture(scope='module', autouse=True)

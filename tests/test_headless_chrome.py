@@ -1,7 +1,5 @@
-import json
-
 from lambda_function import kindle_books_get
-from scraping.headless_chrome import HeadlessChrome
+from find_sale_in_wish_list.headless_chrome import HeadlessChrome
 
 
 def test_init():

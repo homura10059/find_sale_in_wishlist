@@ -37,3 +37,27 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref GetKindleBooks
       Principal: apigateway.amazonaws.com
+  # CloudWatch Events で定期実行する設定
+  SlackNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda_function.lambda_handler
+      Role: arn:aws:iam::267428311438:role/lambda-queue
+      MemorySize: 512
+      CodeUri: ../dist/packages/
+      Events:
+        ScheduledSlackNotification:
+          Type: Schedule
+          Properties:
+            Description: "slackへの定期通知"
+            State: "ENABLED"
+            Schedule: cron(0 11 * * ? *)
+            Input: ""
+
+  PermissionForEventsToInvokeLambda:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref GetKindleBooks
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduledNotification.Arn

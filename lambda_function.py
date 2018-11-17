@@ -4,8 +4,8 @@ import os
 from boto3.dynamodb.conditions import Key
 from logzero import logger
 import logzero
-from scraping.amazon_wish_list import WishList, KindleBook
-from scraping.headless_chrome import HeadlessChrome
+from find_sale_in_wish_list.amazon_wish_list import WishList, KindleBook
+from find_sale_in_wish_list.headless_chrome import HeadlessChrome
 import boto3
 from string import Template
 import textwrap
