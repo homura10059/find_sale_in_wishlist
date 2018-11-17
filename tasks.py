@@ -68,7 +68,7 @@ def build_for_lambda(c, no_clean=False):
 
     directory_list = [
         'bin',
-        'memorize',
+        'find_sale_in_wish_list',
         'scraping',
     ]
     for directory in directory_list:
