@@ -2,139 +2,131 @@
 
 ## data model
 
-```text
-/users/{}
+### `/users/{}`
 
-user_id: "string"
-notification: 
-    type: "slack"
-    incoming_web_hook: "string"
-    slack_channel: "string"
-
-/users/{}/monitors/{}
-
-monitor_id: "string"
-user_id: "string"
-wish_list_url: "string"
-threshold:
-    points: int
-    discount_rate: int
-    
-/system/queues/users/{}
-
-user_id: "string"
-ttl: int
-notification: 
-    type: "slack"
-    incoming_web_hook: "string"
-    slack_channel: "string"
-
-/system/queues/monitors/{}
-
-monitor_id: "string"
-user_id: "string"
-ttl: int
-wish_list_url: "string"
-threshold:
-    points: int
-    discount_rate: int
-notification: 
-    type: "slack"
-    incoming_web_hook: "string"
-    slack_channel: "string"
-
-/system/queues/items/{}
-
-queue_id: "string"
-item_url: "string"
-ttl: int
-threshold:
-    points: int
-    discount_rate: int
-notification: 
-    type: "slack"
-    incoming_web_hook: "string"
-    slack_channel: "string"
-
-
+```yaml
+user_id: string(Hash Key)
+monitors:
+    - 
+    wish_list_url: string
+    threshold:
+        points: int
+        discount_rate: int
+    notification: 
+        type: "slack"
+        incoming_web_hook: string
+        slack_channel: string
+    - 
+    wish_list_url: string
+    threshold:
+        points: int
+        discount_rate: int
+    notification: 
+        type: "slack"
+        incoming_web_hook: string
+        slack_channel: string       
 ```
+
+### `/system/queues/monitors/{}`
+
+```yaml
+wish_list_url: string(Hash Key)
+user_id: string(Sort Key)
+expired: int(TTL)
+threshold:
+    points: int
+    discount_rate: int
+notification: 
+    type: "slack"
+    incoming_web_hook: string
+    slack_channel: string
+item_urls:
+    - "string"
+    - "string"
+    - "string"
+```
+
+これがdeleteされたら
+
+### `/system/queues/items/{}`
+
+```yaml
+item_url: string(Hash Key)
+expired: int(TTL)
+```
+
+
 
 ## flow
 
-### scheduled event
+### director_of_system
 
 ```puml
 @startuml
 
 control event
 
-event -> observer_system: 
+event -> director_of_system: 
 
-database DB_users
-database DB_queue_user
+database users
+database queue_monitor
 
-observer_system <-- DB_users :data
-observer_system --> DB_queue_user: data
+director_of_system <-- users :data
+director_of_system --> queue_monitor: data
 @enduml
 ```
-
-### DB_queue_user
-
-```puml
-@startuml
-
-database DB_queue_user
-
-DB_queue_user -> observer_user: Stream
-database DB_monitors
-database DB_queue_monitor
-
-observer_user <-- DB_monitors :data
-observer_user --> DB_queue_monitor: data
-
-DB_queue_user <-- observer_user: delete
-
-
-@enduml
-```
-
 
 ### DB_queue_monitor
 
 ```puml
 @startuml
 
-database DB_queue_monitor
+database queue_monitor
 
-DB_queue_monitor -> observer_monitor: Stream
+queue_monitor -> worker_monitor: Stream
 
-observer_monitor <--> amazon.jp: data in wish list
+worker_monitor <--> amazon.jp: data in wish list
 
-database DB_queue_item
+database queue_item
 
-observer_monitor --> DB_queue_item: data
+worker_monitor --> queue_item: data
 
-DB_queue_monitor <-- observer_monitor: delete
 @enduml
 ```
-
-
-### DB_queue_item
 
 ```puml
 @startuml
 
-database DB_queue_item
-DB_queue_item -> observer_item: Stream
+database queue_monitor
 
-database DB_chache_item
-observer_item <--> DB_chache_item: data
-observer_item <--> amazon.jp: data
+queue_monitor <-- queue_monitor: delete from ttl
+
+queue_monitor -> notifier: Stream
+
+database chache_item
+notifier <-- chache_item: data
+
 
 actor user
-observer_item -> user: notification
+notifier -> user: notification
 
-observer_item --> DB_queue_item: delete
+@enduml
+```
+
+
+### queue_item
+
+```puml
+@startuml
+
+database queue_item
+queue_item -> worker_item: Stream
+worker_item <-- amazon.jp: data
+
+database chache_item
+worker_item --> chache_item: data
+
+worker_item --> queue_item: delete
 @enduml
 ```
 
