@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: kindle_sale api
+
+Globals:
+  Api:
+    Cors: "'*'"
+  Function:
+    Runtime: python3.6
+    Timeout: 300
+    MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_NAME: test-table
+    DeadLetterQueue:
+      Type: SNS
+      TargetArn: arn:aws:sns:ap-northeast-1:267428311438:failed-lambda
+
+Resources:
+  # API-GATEWAY 用の設定
+  GetKindleBooks:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda_function.kindle_books_get
+      Role: arn:aws:iam::267428311438:role/lambda-queue
+      MemorySize: 512
+      CodeUri: ../dist/packages/
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            Path: /kindle_books/
+            Method: get
+  ConfigLambdaPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref GetKindleBooks
+      Principal: apigateway.amazonaws.com

@@ -62,6 +62,7 @@ def build_for_lambda(c, no_clean=False):
         'requirements.txt',
         'constraints.txt',
         'lambda_function.py',
+        'lambda_handler/director_of_system.py',
     ]
     for file in file_list:
         c.run("cp -p {file} {path}".format(file=file, path=DIST_PATH))
@@ -118,7 +119,7 @@ def deploy_stack(c, no_build=False, no_clean=False):
               "--output-template-file packaged.yaml")
         c.run("aws cloudformation deploy "
               "--template-file packaged.yaml "
-              "--stack-name kindle-sale-api "
+              "--stack-name find-sale-in-wish-list "
               "--capabilities CAPABILITY_IAM ")
 
 
