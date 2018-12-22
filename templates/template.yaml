@@ -66,6 +66,29 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${DirectorOfSystem}
       RetentionInDays: 14
+  Notifier:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: notifier.lambda_handler
+      Role: !GetAtt LambdaIamRole.Arn
+      CodeUri: ../dist/packages/
+      Environment:
+        Variables:
+          TABLE_USER: !Ref Users
+          QUEUE_MONITORS: !Ref QueueMonitors
+          CACHE_TABLE: !Ref CacheItems
+      Events:
+        DynamoStreamEventForNotifier:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt QueueMonitors.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 1
+  LogGroupNotifier:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Notifier}
+      RetentionInDays: 14
   ## DynamoDB
   Users:
     Type: AWS::DynamoDB::Table
@@ -98,6 +121,8 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: "expired"
         Enabled: true
+      StreamSpecification:
+        StreamViewType: 'OLD_IMAGE'
   QueueItems:
     Type: AWS::DynamoDB::Table
     Properties:

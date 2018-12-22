@@ -59,7 +59,7 @@ expired: int(TTL)
 
 ## flow
 
-### director_of_system
+### [x] director_of_system
 
 ```puml
 @startuml
@@ -76,23 +76,25 @@ director_of_system --> queue_monitor: data
 @enduml
 ```
 
-### DB_queue_monitor
+### [ ] worker_of_monitor
 
 ```puml
 @startuml
 
 database queue_monitor
 
-queue_monitor -> worker_monitor: Stream
+queue_monitor -> worker_of_monitor: Stream
 
-worker_monitor <--> amazon.jp: data in wish list
+worker_of_monitor <--> amazon.jp: data in wish list
 
 database queue_item
 
-worker_monitor --> queue_item: data
+worker_of_monitor --> queue_item: data
 
 @enduml
 ```
+
+### [ ] notifier
 
 ```puml
 @startuml
@@ -114,19 +116,19 @@ notifier -> user: notification
 ```
 
 
-### queue_item
+### [ ] worker_of_item
 
 ```puml
 @startuml
 
 database queue_item
-queue_item -> worker_item: Stream
-worker_item <-- amazon.jp: data
+queue_item -> worker_of_item: Stream
+worker_of_item <-- amazon.jp: data
 
 database chache_item
-worker_item --> chache_item: data
+worker_of_item --> chache_item: data
 
-worker_item --> queue_item: delete
+worker_of_item --> queue_item: delete
 @enduml
 ```
 

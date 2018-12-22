@@ -63,6 +63,7 @@ def build_for_lambda(c, no_clean=False):
         'constraints.txt',
         'lambda_function.py',
         'lambda_handler/director_of_system.py',
+        'lambda_handler/notifier.py',
     ]
     for file in file_list:
         c.run("cp -p {file} {path}".format(file=file, path=DIST_PATH))
