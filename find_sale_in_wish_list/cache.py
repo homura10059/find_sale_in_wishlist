@@ -5,6 +5,7 @@ from logzero import logger
 import os
 import boto3
 
+from find_sale_in_wish_list import deserialize
 
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
@@ -18,7 +19,8 @@ if endpoint_url is None:
 else:
     dynamo_db = boto3.resource('dynamodb', endpoint_url=endpoint_url)
 
-table = dynamo_db.Table('kindle_book_cache')
+table_name = os.environ.get('CACHE_TABLE', default='kindle_book_cache')
+table = dynamo_db.Table(table_name)
 
 
 class Cache:
@@ -44,8 +46,10 @@ class Cache:
         if cache is None:
             return None
 
+        cache = deserialize(cache)
+
         now = calendar.timegm(time.gmtime())
-        expire = cache["expire"]
+        expire = cache.get("expire", 0)
         if now > expire:
             table.delete_item(
                 Key={

@@ -16,11 +16,11 @@ class SlackMessage:
         self.books = {}
 
     def add_high_loyalty_points_books(self, kindle_books_list, point_threshold=20):
-        over_points_dict = dict(filter(lambda x: x[1]['loyalty_points'] >= point_threshold, kindle_books_list.items()))
+        over_points_dict = dict(filter(lambda x: x[1]['loyalty_points'] >= int(point_threshold), kindle_books_list.items()))
         self.books = {**self.books, **over_points_dict}
 
     def add_high_discount_rate_books(self, kindle_books_list, discount_threshold=20):
-        discount_dict = dict(filter(lambda x: x[1]['discount_rate'] >= discount_threshold, kindle_books_list.items()))
+        discount_dict = dict(filter(lambda x: x[1]['discount_rate'] >= int(discount_threshold), kindle_books_list.items()))
         self.books = {**self.books, **discount_dict}
 
     def build_data(self):
