@@ -22,16 +22,15 @@ def lambda_handler(event, context):
     queue_items = dynamodb.Table(os.environ['QUEUE_ITEMS'])
 
     recodes = event['Records']
-    headless_chrome = HeadlessChrome()
 
     for recode in recodes:
         if not recode['eventName'] == 'INSERT':
             continue
+        headless_chrome = HeadlessChrome()
         image = deserialize(recode['dynamodb']['NewImage'])
         logger.info("queue_item　%s", image)
         enqueue_item(headless_chrome, image, queue_items)
-
-    headless_chrome.driver.close()
+        headless_chrome.driver.close()
 
 
 def enqueue_item(headless_chrome, image, queue_items):
