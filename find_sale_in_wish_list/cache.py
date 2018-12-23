@@ -22,6 +22,8 @@ else:
 table_name = os.environ.get('CACHE_TABLE', default='kindle_book_cache')
 table = dynamo_db.Table(table_name)
 
+TTL_KEY = "expired"
+
 
 class Cache:
 
@@ -29,7 +31,7 @@ class Cache:
         self.timeout = timeout
 
     def set(self, val: dict or list)-> None:
-        val["expire"] = calendar.timegm(time.gmtime()) + self.timeout
+        val[TTL_KEY] = calendar.timegm(time.gmtime()) + self.timeout
         table.put_item(
             Item=val
         )
@@ -49,7 +51,7 @@ class Cache:
         cache = deserialize(cache)
 
         now = calendar.timegm(time.gmtime())
-        expire = cache.get("expire", 0)
+        expire = cache.get(TTL_KEY, 0)
         if now > expire:
             table.delete_item(
                 Key={
