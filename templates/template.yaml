@@ -9,6 +9,12 @@ Globals:
     Runtime: python3.6
     Timeout: 300
     MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_USER: !Ref Users
+        QUEUE_MONITORS: !Ref QueueMonitors
+        CACHE_TABLE: !Ref CacheItems
+        QUEUE_ITEMS: !Ref QueueItems
     DeadLetterQueue:
       Type: SNS
       TargetArn: arn:aws:sns:ap-northeast-1:267428311438:failed-lambda
@@ -89,6 +95,24 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${Notifier}
       RetentionInDays: 14
+  WorkerOfMonitor:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: worker_of_monitor.lambda_handler
+      Role: !GetAtt LambdaIamRole.Arn
+      CodeUri: ../dist/packages/
+      Events:
+        DynamoStreamEventForWorkerOfMonitor:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt QueueMonitors.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 1
+  LogGroupWorkerOfMonitor:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${WorkerOfMonitor}
+      RetentionInDays: 14
   ## DynamoDB
   Users:
     Type: AWS::DynamoDB::Table
@@ -122,7 +146,7 @@ Resources:
         AttributeName: "expired"
         Enabled: true
       StreamSpecification:
-        StreamViewType: 'OLD_IMAGE'
+        StreamViewType: 'NEW_AND_OLD_IMAGES'
   QueueItems:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -138,6 +162,8 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: "expired"
         Enabled: true
+      StreamSpecification:
+        StreamViewType: 'NEW_IMAGE'
   CacheItems:
     Type: AWS::DynamoDB::Table
     Properties:
