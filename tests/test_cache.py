@@ -1,6 +1,5 @@
-import pytest
-from memorize.cache import Cache
-from memorize.cache import cached
+from find_sale_in_wish_list.cache import Cache
+from find_sale_in_wish_list.cache import cached
 from time import sleep
 
 

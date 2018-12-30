@@ -105,7 +105,8 @@ venv.bak/
 
 \.idea/
 \.DS_Store
-deploy/
-deploy_package\.zip
 
 src/
+templates/packaged\.yaml
+
+templates/kindle-sale-api-Prod-swagger-apigateway\.yaml

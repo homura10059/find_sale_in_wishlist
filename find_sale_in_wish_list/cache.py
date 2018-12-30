@@ -5,6 +5,7 @@ from logzero import logger
 import os
 import boto3
 
+from find_sale_in_wish_list import deserialize
 
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
@@ -18,24 +19,25 @@ if endpoint_url is None:
 else:
     dynamo_db = boto3.resource('dynamodb', endpoint_url=endpoint_url)
 
-table = dynamo_db.Table('kindle_book_cache')
+table_name = os.environ.get('CACHE_TABLE', default='kindle_book_cache')
+TTL_KEY = "expired"
 
 
 class Cache:
 
     def __init__(self, timeout=60*60):
         self.timeout = timeout
+        self.table = dynamo_db.Table(table_name)
 
     def set(self, val: dict or list)-> None:
-        val["expire"] = calendar.timegm(time.gmtime()) + self.timeout
-        table.put_item(
+        val[TTL_KEY] = calendar.timegm(time.gmtime()) + self.timeout
+        self.table.put_item(
             Item=val
         )
         logger.debug("cache set. val:%s", val)
 
-    @staticmethod
-    def get(key_name: str, key: str)-> None or dict or list:
-        cache = table.get_item(
+    def get(self, key_name: str, key: str)-> None or dict or list:
+        cache = self.table.get_item(
             Key={
                 key_name: key
             }
@@ -44,10 +46,12 @@ class Cache:
         if cache is None:
             return None
 
+        cache = deserialize(cache)
+
         now = calendar.timegm(time.gmtime())
-        expire = cache["expire"]
+        expire = cache.get(TTL_KEY, 0)
         if now > expire:
-            table.delete_item(
+            self.table.delete_item(
                 Key={
                     key_name: key
                 }

@@ -6,8 +6,8 @@ import re
 import time
 import calendar
 
-from memorize.cache import cached
-from scraping.headless_chrome import HeadlessChrome
+from find_sale_in_wish_list.cache import cached
+from find_sale_in_wish_list.headless_chrome import HeadlessChrome
 
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
