@@ -49,6 +49,9 @@ Resources:
               - Effect: "Allow"
                 Action: "logs:*"
                 Resource: "arn:aws:logs:*:*:*"
+              - Effect: "Allow"
+                Action: "lambda:InvokeFunction"
+                Resource: "*"
   # CloudWatch Events で定期実行
   ## Lambda
   DirectorOfSystem:
@@ -57,10 +60,6 @@ Resources:
       Handler: director_of_system.lambda_handler
       Role: !GetAtt LambdaIamRole.Arn
       CodeUri: ../dist/packages/
-      Environment:
-        Variables:
-          TABLE_USER: !Ref Users
-          QUEUE_MONITORS: !Ref QueueMonitors
       Events:
         ScheduledEventForDirectorOfSystem:
           Type: Schedule
@@ -78,11 +77,6 @@ Resources:
       Handler: notifier.lambda_handler
       Role: !GetAtt LambdaIamRole.Arn
       CodeUri: ../dist/packages/
-      Environment:
-        Variables:
-          TABLE_USER: !Ref Users
-          QUEUE_MONITORS: !Ref QueueMonitors
-          CACHE_TABLE: !Ref CacheItems
       Events:
         DynamoStreamEventForNotifier:
           Type: DynamoDB
@@ -112,6 +106,24 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /aws/lambda/${WorkerOfMonitor}
+      RetentionInDays: 14
+  WorkerOfItem:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: worker_of_item.lambda_handler
+      Role: !GetAtt LambdaIamRole.Arn
+      CodeUri: ../dist/packages/
+      Events:
+        DynamoStreamEventForWorkerOfItem:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt QueueItems.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 1
+  LogGroupWorkerOfItem:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${WorkerOfItem}
       RetentionInDays: 14
   ## DynamoDB
   Users:
