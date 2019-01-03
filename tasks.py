@@ -1,6 +1,7 @@
 from invoke import task
 import shutil
 from pathlib import Path
+from git import Repo
 
 REGION = 'ap-northeast-1'
 S3_BUCKET = 'lambda-function-deploy-packages'
@@ -82,24 +83,6 @@ def build_for_lambda(c, no_clean=False):
 
 
 @task
-def upload(c, no_build=False, no_clean=False):
-    """
-    s3 へコードをアップロードする
-    :param c:
-    :param no_build:
-    :param no_clean:
-    :return:
-    """
-
-    if not no_build:
-        build_for_lambda(c, no_clean)
-
-    with c.cd(DIST_PATH):
-        c.run('aws s3 cp {zip} s3://{s3_bucket}/{s3_dir}/'.format(
-            zip=DEPLOY_ZIP, s3_bucket=S3_BUCKET, s3_dir=S3_DIR))
-
-
-@task
 def deploy_stack(c, no_build=False, no_clean=False):
     """
     aws cloud formation を使ってコードをデプロイする
@@ -109,6 +92,9 @@ def deploy_stack(c, no_build=False, no_clean=False):
     :return:
     """
 
+    repo = Repo("./")
+    branch = repo.head.ref.name
+    stack_name = "sale-{branch}".format(branch=branch)
     if not no_build:
         build_for_lambda(c, no_clean=no_clean)
 
@@ -116,61 +102,13 @@ def deploy_stack(c, no_build=False, no_clean=False):
         c.run('rm -rf deploy_package.zip')
 
     with c.cd('templates'):
-        c.run("aws cloudformation package "
-              "--template-file template.yaml "
-              "--s3-bucket lambda-function-deploy-packages "
+        c.run("aws cloudformation package " +
+              "--template-file template.yaml " +
+              "--s3-bucket lambda-function-deploy-packages " +
               "--output-template-file packaged.yaml")
-        c.run("aws cloudformation deploy "
-              "--template-file packaged.yaml "
-              "--stack-name find-sale-in-wish-list "
+        c.run("aws cloudformation deploy " +
+              "--template-file packaged.yaml " +
+              "--stack-name {} ".format(stack_name) +
               "--capabilities CAPABILITY_IAM ")
-
-
-@task
-def deploy(c, lambda_name):
-    lambda_names = [
-        'lambda_headless_chrome_python',
-        'worker_scraping_book',
-        'worker_scraping_wish_list',
-        'worker_user',
-    ]
-
-    if lambda_name == 'all':
-        for name in lambda_names:
-            __deploy_code(c, name)
-    else:
-        __deploy_code(c, lambda_name)
-
-
-def __deploy_code(c, name: str)-> None:
-    c.run('aws lambda update-function-code '
-          + '--region {} '.format(REGION)
-          + '--function-name {} '.format(name)
-          + '--s3-bucket={} '.format(S3_BUCKET)
-          + '--s3-key={s3_dir}/{zip}'.format(s3_dir=S3_DIR, zip=DEPLOY_ZIP))
-
-
-@task
-def create_lambda_function(c, lambda_name):
-    c.run('aws lambda create-function '
-          + '--region {} '.format(REGION)
-          + '--function-name {} '.format(lambda_name)
-          + '--runtime python3.6 '
-          + '--role arn:aws:iam::267428311438:role/lambda-queue '
-          + '--code S3Bucket={s3_bucket},S3Key={s3_dir}/{zip} '.format(s3_bucket=S3_BUCKET, s3_dir=S3_DIR, zip=DEPLOY_ZIP)
-          + '--handler lambda_function.{} '.format(lambda_name)
-          + '--memory-size 256 --timeout 300 '
-          + '--dead-letter-config TargetArn=arn:aws:sns:ap-northeast-1:267428311438:failed-lambda '
-          + '--tags service=kindle_sale '
-          )
-
-
-@task
-def create_sqs_queue(c, queue_name):
-    c.run('aws sqs create-queue '
-          + '--region {} '.format(REGION)
-          + '--queue-name {} '.format(queue_name)
-          + '--attributes VisibilityTimeout=300 '
-          )
 
 
