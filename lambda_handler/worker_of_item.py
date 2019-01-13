@@ -18,19 +18,13 @@ def lambda_handler(event, context):
      :param context:
      :return:
      """
-    recodes = event['Records']
 
-    response_list = []
-    for recode in recodes:
-        if not recode['eventName'] == 'INSERT':
-            continue
-        headless_chrome = HeadlessChrome()
-        image = deserialize(recode['dynamodb']['NewImage'])
-        logger.info("queue_item　%s", image)
-        kindle_book = KindleBook(headless_chrome)
-        res = kindle_book.get(url=image["item_url"])
-        response_list.append(res)
-        headless_chrome.driver.close()
-
-    return response_list
+    headless_chrome = HeadlessChrome()
+    kindle_book = KindleBook(headless_chrome)
+    url = event["item_url"]
+    book = kindle_book.get(url=url)
+    res = {url: book}
+    headless_chrome.driver.close()
+    logger.info("res: %s",  res)
+    return res
 

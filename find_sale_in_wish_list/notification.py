@@ -1,6 +1,7 @@
 import json
 import locale
 import textwrap
+from decimal import Decimal
 from string import Template
 
 import requests
@@ -15,12 +16,18 @@ class SlackMessage:
         self.slack_channel = slack_channel
         self.books = {}
 
-    def add_high_loyalty_points_books(self, kindle_books_list, point_threshold=20):
-        over_points_dict = dict(filter(lambda x: x[1]['loyalty_points'] >= int(point_threshold), kindle_books_list.items()))
+    def add_high_loyalty_points_books(self, kindle_books_dict: dict, point_threshold=20):
+        over_points_dict = {}
+        for key, value in kindle_books_dict.items():
+            if value['loyalty_points'] > Decimal(point_threshold):
+                over_points_dict[key] = value
         self.books = {**self.books, **over_points_dict}
 
-    def add_high_discount_rate_books(self, kindle_books_list, discount_threshold=20):
-        discount_dict = dict(filter(lambda x: x[1]['discount_rate'] >= int(discount_threshold), kindle_books_list.items()))
+    def add_high_discount_rate_books(self, kindle_books_dict, discount_threshold=20):
+        discount_dict = {}
+        for key, value in kindle_books_dict.items():
+            if value['discount_rate'] > Decimal(discount_threshold):
+                discount_dict[key] = value
         self.books = {**self.books, **discount_dict}
 
     def build_data(self):

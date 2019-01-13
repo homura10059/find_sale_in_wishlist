@@ -1,7 +1,8 @@
 from unittest import TestCase
 
 from find_sale_in_wish_list.headless_chrome import HeadlessChrome
-from lambda_handler.notifier import get_kindle_books
+from lambda_handler.notifier import get_kindle_books, on_insert_event
+import os
 
 
 class TestNotifier(TestCase):
