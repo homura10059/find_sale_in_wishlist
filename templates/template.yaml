@@ -77,6 +77,9 @@ Resources:
       Handler: notifier.lambda_handler
       Role: !GetAtt LambdaIamRole.Arn
       CodeUri: ../dist/packages/
+      Environment:
+        Variables:
+          WORKER_ITEM: !Ref WorkerOfItem
       Events:
         DynamoStreamEventForNotifier:
           Type: DynamoDB
@@ -89,37 +92,12 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${Notifier}
       RetentionInDays: 14
-  WorkerOfMonitor:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: worker_of_monitor.lambda_handler
-      Role: !GetAtt LambdaIamRole.Arn
-      CodeUri: ../dist/packages/
-      Events:
-        DynamoStreamEventForWorkerOfMonitor:
-          Type: DynamoDB
-          Properties:
-            Stream: !GetAtt QueueMonitors.StreamArn
-            StartingPosition: TRIM_HORIZON
-            BatchSize: 1
-  LogGroupWorkerOfMonitor:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub /aws/lambda/${WorkerOfMonitor}
-      RetentionInDays: 14
   WorkerOfItem:
     Type: AWS::Serverless::Function
     Properties:
       Handler: worker_of_item.lambda_handler
       Role: !GetAtt LambdaIamRole.Arn
       CodeUri: ../dist/packages/
-      Events:
-        DynamoStreamEventForWorkerOfItem:
-          Type: DynamoDB
-          Properties:
-            Stream: !GetAtt QueueItems.StreamArn
-            StartingPosition: TRIM_HORIZON
-            BatchSize: 1
   LogGroupWorkerOfItem:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -174,8 +152,6 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: "expired"
         Enabled: true
-      StreamSpecification:
-        StreamViewType: 'NEW_IMAGE'
   CacheItems:
     Type: AWS::DynamoDB::Table
     Properties:
