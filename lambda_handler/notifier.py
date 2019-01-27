@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 from logzero import logger
 
-from find_sale_in_wish_list import deserialize
 from find_sale_in_wish_list.notification import SlackMessage
 from find_sale_in_wish_list.amazon_wish_list import WishList
 from find_sale_in_wish_list.headless_chrome import HeadlessChrome
@@ -13,24 +12,13 @@ import json
 
 def lambda_handler(event, context):
     """
-    Trigger: dynamodb delete event
     monitor に対応した通知を送る
     :param event:
     :param context:
     :return:
     """
-
-    recodes = event['Records']
-
-    for recode in recodes:
-        if recode['eventName'] == 'REMOVE':
-            # remove の時は何もしない
-            pass
-        elif recode['eventName'] == 'INSERT':
-            queue_item = deserialize(recode['dynamodb']['NewImage'])
-            on_insert_event(queue_item)
-        else:
-            continue
+    logger.info("event: %s", event)
+    on_insert_event(event)
 
 
 def on_insert_event(queue_item: dict):

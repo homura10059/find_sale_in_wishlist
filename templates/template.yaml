@@ -12,9 +12,7 @@ Globals:
     Environment:
       Variables:
         TABLE_USER: !Ref Users
-        QUEUE_MONITORS: !Ref QueueMonitors
         CACHE_TABLE: !Ref CacheItems
-        QUEUE_ITEMS: !Ref QueueItems
     DeadLetterQueue:
       Type: SNS
       TargetArn: arn:aws:sns:ap-northeast-1:267428311438:failed-lambda
@@ -60,6 +58,9 @@ Resources:
       Handler: director_of_system.lambda_handler
       Role: !GetAtt LambdaIamRole.Arn
       CodeUri: ../dist/packages/
+      Environment:
+        Variables:
+          NOTIFIER: !Ref Notifier
       Events:
         ScheduledEventForDirectorOfSystem:
           Type: Schedule
@@ -80,13 +81,6 @@ Resources:
       Environment:
         Variables:
           WORKER_ITEM: !Ref WorkerOfItem
-      Events:
-        DynamoStreamEventForNotifier:
-          Type: DynamoDB
-          Properties:
-            Stream: !GetAtt QueueMonitors.StreamArn
-            StartingPosition: TRIM_HORIZON
-            BatchSize: 1
   LogGroupNotifier:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -116,42 +110,6 @@ Resources:
       KeySchema:
         - AttributeName: "user_id"
           KeyType: "HASH"
-  QueueMonitors:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
-      AttributeDefinitions:
-        - AttributeName: "wish_list_url"
-          AttributeType: "S"
-        - AttributeName: "user_id"
-          AttributeType: "S"
-      KeySchema:
-        - AttributeName: "wish_list_url"
-          KeyType: "HASH"
-        - AttributeName: "user_id"
-          KeyType: "RANGE"
-      TimeToLiveSpecification:
-        AttributeName: "expired"
-        Enabled: true
-      StreamSpecification:
-        StreamViewType: 'NEW_AND_OLD_IMAGES'
-  QueueItems:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
-      AttributeDefinitions:
-      - AttributeName: "item_url"
-        AttributeType: "S"
-      KeySchema:
-      - AttributeName: "item_url"
-        KeyType: "HASH"
-      TimeToLiveSpecification:
-        AttributeName: "expired"
-        Enabled: true
   CacheItems:
     Type: AWS::DynamoDB::Table
     Properties:
