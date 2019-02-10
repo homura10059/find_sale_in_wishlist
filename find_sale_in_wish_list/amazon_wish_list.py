@@ -114,11 +114,13 @@ class KindleBook:
         kindle_book = {
             'url': url,
             'book_title': book_title,
-            'discount_rate': discount_rate,
-            'discount_price': discount_price,
-            'price': price,
-            'loyalty_points': loyalty_points,
-            'updated': calendar.timegm(time.gmtime())
+            'latest': {
+                'discount_rate': discount_rate,
+                'discount_price': discount_price,
+                'price': price,
+                'loyalty_points': loyalty_points,
+                'updated': calendar.timegm(time.gmtime())
+            },
         }
         logger.debug("complete get_kindle_book: %s", kindle_book)
         return kindle_book

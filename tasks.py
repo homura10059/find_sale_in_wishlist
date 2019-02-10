@@ -65,7 +65,6 @@ def build_for_lambda(c, no_clean=False):
         'lambda_function.py',
         'lambda_handler/director_of_system.py',
         'lambda_handler/notifier.py',
-        'lambda_handler/worker_of_monitor.py',
         'lambda_handler/worker_of_item.py',
     ]
     for file in file_list:
