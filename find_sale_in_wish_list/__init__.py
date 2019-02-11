@@ -13,9 +13,10 @@ def deserialize(image: dict)-> dict:
 
     python_data = {}
     for key, val in image.items():
-        # if isinstance(val, Decimal):
-        #     python_data[key] = decimal_default(val)
-        if hasattr(val, "keys"):
+        if isinstance(val, dict):
+            # dict は再帰的に変換する
+            python_data[key] = deserialize(val)
+        elif hasattr(val, "keys"):
             python_data[key] = deserializer.deserialize(val)
         else:
             python_data[key] = val

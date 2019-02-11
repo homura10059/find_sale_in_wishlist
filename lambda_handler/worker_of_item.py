@@ -1,11 +1,5 @@
-import calendar
-import os
-import time
-
-import boto3
 from logzero import logger
 
-from find_sale_in_wish_list import deserialize
 from find_sale_in_wish_list.amazon_wish_list import KindleBook
 from find_sale_in_wish_list.headless_chrome import HeadlessChrome
 

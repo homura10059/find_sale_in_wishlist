@@ -7,106 +7,85 @@
 ```yaml
 user_id: string(Hash Key)
 monitors:
-    - 
+    -
     wish_list_url: string
     threshold:
         points: int
         discount_rate: int
-    notification: 
+    notification:
         type: "slack"
         incoming_web_hook: string
         slack_channel: string
-    - 
+    -
     wish_list_url: string
     threshold:
         points: int
         discount_rate: int
-    notification: 
+    notification:
         type: "slack"
         incoming_web_hook: string
-        slack_channel: string       
+        slack_channel: string
 ```
 
-### `/system/queues/monitors/{}`
+### `/items/{}`
 
 ```yaml
-wish_list_url: string(Hash Key)
-user_id: string(Sort Key)
-expired: int(TTL)
-threshold:
-    points: int
-    discount_rate: int
-notification: 
-    type: "slack"
-    incoming_web_hook: string
-    slack_channel: string
-item_urls:
-    - "string"
-    - "string"
-    - "string"
+'url': url
+'book_title': book_title
+'latest':
+    'discount_rate': discount_rate
+    'discount_price': discount_price
+    'loyalty_points': loyalty_points
+    'price': price
+    'updated': time
+'best':
+    'discount_rate': discount_rate
+    'discount_price': discount_price
+    'loyalty_points': loyalty_points
+    'price': price
+    'updated': time
+
 ```
-
-これがdeleteされたら
-
-### `/system/queues/items/{}`
-
-```yaml
-item_url: string(Hash Key)
-expired: int(TTL)
-```
-
-
 
 ## flow
 
-### [x] director_of_system
+### director_of_system
 
 ```puml
 @startuml
 
 control event
-
-event -> director_of_system: 
-
 database users
-database queue_monitor
 
+event -> director_of_system:
+
+
+director_of_system --> users :request
 director_of_system <-- users :data
-director_of_system --> queue_monitor: data
+director_of_system --> notifier: data
+... paralle request ...
+director_of_system --> notifier: data
 @enduml
 ```
+``
 
-### [ ] worker_of_monitor
+### notifier
 
 ```puml
 @startuml
+director_of_system -> notifier: data
 
-database queue_monitor
+notifier -> worker_of_item: request
+... paralle request ...
+notifier -> worker_of_item: request
 
-queue_monitor -> worker_of_monitor: Stream
+...
+... wait response ...
+...
 
-worker_of_monitor <--> amazon.jp: data in wish list
-
-database queue_item
-
-worker_of_monitor --> queue_item: data
-
-@enduml
-```
-
-### [ ] notifier
-
-```puml
-@startuml
-
-database queue_monitor
-
-queue_monitor <-- queue_monitor: delete from ttl
-
-queue_monitor -> notifier: Stream
-
-database chache_item
-notifier <-- chache_item: data
+notifier <- worker_of_item: book_data
+... paralle responce ...
+notifier <- worker_of_item: book_data
 
 
 actor user
@@ -116,19 +95,19 @@ notifier -> user: notification
 ```
 
 
-### [ ] worker_of_item
+### worker_of_item
 
 ```puml
 @startuml
 
-database queue_item
-queue_item -> worker_of_item: Stream
+
+notifier -> worker_of_item: request
 worker_of_item <-- amazon.jp: data
 
 database chache_item
 worker_of_item --> chache_item: data
 
-worker_of_item --> queue_item: delete
+worker_of_item --> notifier: book_data
 @enduml
 ```
 

@@ -19,14 +19,14 @@ class SlackMessage:
     def add_high_loyalty_points_books(self, kindle_books_dict: dict, point_threshold=20):
         over_points_dict = {}
         for key, value in kindle_books_dict.items():
-            if value['loyalty_points'] > Decimal(point_threshold):
+            if Decimal(value["latest"]['loyalty_points']) > Decimal(point_threshold):
                 over_points_dict[key] = value
         self.books = {**self.books, **over_points_dict}
 
     def add_high_discount_rate_books(self, kindle_books_dict, discount_threshold=20):
         discount_dict = {}
         for key, value in kindle_books_dict.items():
-            if value['discount_rate'] > Decimal(discount_threshold):
+            if Decimal(value["latest"]['discount_rate']) > Decimal(discount_threshold):
                 discount_dict[key] = value
         self.books = {**self.books, **discount_dict}
 
@@ -37,7 +37,7 @@ class SlackMessage:
         locale.setlocale(locale.LC_ALL, ('ja_JP', 'UTF-8'))
 
         for kindle_id, kindle_book in self.books.items():
-            kindle_book['price'] = locale.currency(kindle_book['price'], grouping=True)
+            kindle_book["latest"]['price'] = locale.currency(kindle_book["latest"]['price'], grouping=True)
 
             text_template = """
             金額: ${price}
@@ -45,7 +45,7 @@ class SlackMessage:
             ポイント還元率: ${loyalty_points}%
             """
             temp = Template(textwrap.dedent(text_template))
-            text = temp.safe_substitute(kindle_book)
+            text = temp.safe_substitute(kindle_book["latest"])
 
             attachment = {
                 "text": text,
