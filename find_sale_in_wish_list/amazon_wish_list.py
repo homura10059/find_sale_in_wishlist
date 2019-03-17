@@ -15,6 +15,48 @@ formatter = logzero.LogFormatter(
 logzero.formatter(formatter)
 
 
+def get_full_page_html(driver, url):
+    driver.get(url)
+
+    # ページ最下部までスクロール
+    pause_time = 1
+    scroll_height = 1280
+
+    while True:
+        logger.debug("scroll_height:%s, pause_time:%s, url:%s", scroll_height, pause_time, url)
+
+        # スクロール
+        driver.execute_script("window.scrollTo(0, {});".format(scroll_height))
+        # 読み込み待ち
+        sleep(pause_time)
+
+        # HTMLを文字コードをUTF-8に変換してから取得
+        html = driver.page_source.encode('utf-8')
+
+        if is_end_of_page(html):
+            break
+
+        # 読み込み時間を延長
+        pause_time += 1
+        # スクロール距離を延長
+        scroll_height *= 4
+
+    logger.debug("complete get_full_page_html url:%s", url)
+
+    html = driver.page_source.encode('utf-8')
+    return html
+
+
+def is_end_of_page(html):
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    # 読み込みが完了したか確認
+    selector = "#g-items > div > span"
+    list_end = soup.select_one(selector)
+    return list_end is None
+
+
 class WishList:
 
     def __init__(self, url, headless_chrome=None):
@@ -22,52 +64,10 @@ class WishList:
             self.headless_chrome = HeadlessChrome()
         else:
             self.headless_chrome = headless_chrome
-        html = self.__get_full_page_html(url)
+        html = get_full_page_html(self.headless_chrome.driver, url)
         soup = BeautifulSoup(html, "html.parser")
         self.soup = soup
         self.kindle_book = KindleBook(headless_chrome)
-
-    def __get_full_page_html(self, url):
-        driver = self.headless_chrome.driver
-        driver.get(url)
-
-        # ページ最下部までスクロール
-        pause_time = 1
-        scroll_height = 1280
-
-        while True:
-            logger.debug("scroll_height:%s, pause_time:%s, url:%s", scroll_height, pause_time, url)
-
-            # スクロール
-            driver.execute_script("window.scrollTo(0, {});".format(scroll_height))
-            # 読み込み待ち
-            sleep(pause_time)
-
-            # HTMLを文字コードをUTF-8に変換してから取得
-            html = driver.page_source.encode('utf-8')
-
-            if self.is_end_of_page(html):
-                break
-
-            # 読み込み時間を延長
-            pause_time += 1
-            # スクロール距離を延長
-            scroll_height *= 4
-
-        logger.debug("complete get_full_page_html url:%s", url)
-
-        html = driver.page_source.encode('utf-8')
-        return html
-
-    @staticmethod
-    def is_end_of_page(html):
-
-        soup = BeautifulSoup(html, "html.parser")
-
-        # 読み込みが完了したか確認
-        selector = "#g-items > div > span"
-        list_end = soup.select_one(selector)
-        return list_end is None
 
     def get_kindle_book_url_list(self) -> list:
         kindle_book_url_list = []
@@ -102,8 +102,8 @@ class KindleBook:
 
     @cached(timeout=3*60*60)
     def get(self, url):
-
-        soup = self.headless_chrome.get_soup(url)
+        html = get_full_page_html(self.headless_chrome.driver, url)
+        soup = BeautifulSoup(html, "html.parser")
 
         book_title = self.__find_book_title_in(soup)
         discount_rate = self.__find_discount_rate_in(soup)
