@@ -4,3 +4,4 @@ requests
 selenium
 pyyaml
 boto3
+retry
