@@ -9,6 +9,8 @@ import calendar
 from find_sale_in_wish_list.cache import cached
 from find_sale_in_wish_list.headless_chrome import HeadlessChrome
 
+from retry import retry
+
 formatter = logzero.LogFormatter(
     fmt="%(asctime)s|%(filename)s:%(lineno)d|%(levelname)-7s : %(message)s",
 )
@@ -100,6 +102,7 @@ class KindleBook:
         else:
             self.headless_chrome = headless_chrome
 
+    @retry(ValueError, 3, 5, 10, 1, 1)
     @cached(timeout=3*60*60)
     def get(self, url):
         html = get_full_page_html(self.headless_chrome.driver, url)
@@ -130,8 +133,8 @@ class KindleBook:
         selector = "#ebooksProductTitle"
         book_title = soup.select_one(selector)
         if book_title is None:
-            # 取れなかったら適当にselectorを返す
-            return selector
+            # 取れなかったらValueError
+            raise ValueError
         else:
             return book_title.text
 
