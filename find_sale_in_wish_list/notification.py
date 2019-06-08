@@ -64,8 +64,9 @@ class SlackMessage:
 
     def post(self):
         # SlackにPOST
-        try:
-            req = requests.post(self.slack_incoming_web_hook, data=self.build_data())
-            logger.info("Message posted to %s", self.slack_channel)
-        except requests.exceptions.RequestException as e:
-            logger.error("Request failed: %s", e)
+        if len(self.books) != 0:
+            try:
+                req = requests.post(self.slack_incoming_web_hook, data=self.build_data())
+                logger.info("Message posted to %s", self.slack_channel)
+            except requests.exceptions.RequestException as e:
+                logger.error("Request failed: %s", e)
